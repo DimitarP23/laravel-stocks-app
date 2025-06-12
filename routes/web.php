@@ -14,7 +14,7 @@ Route::post('/test-form', function (Request $request) {
         'message' => 'Form submitted successfully!',
         'data' => $request->all()
     ]);
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 Route::get('/test-form', function () {
     return '
@@ -29,7 +29,7 @@ Route::get('/test-form', function () {
         </form>
     </body>
     </html>';
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 // BASIC ROUTES
 Route::get('/', function () {
