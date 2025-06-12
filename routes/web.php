@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cookie;
 
-// DIAGNOSTIC TEST ROUTE - NO MIDDLEWARE AT ALL
+// DIAGNOSTIC TEST ROUTES - Testing different middleware combinations
 Route::post('/test-form', function (Request $request) {
     return response()->json([
         'status' => 'success',
@@ -31,6 +31,128 @@ Route::get('/test-form', function () {
     </html>';
 })->withoutMiddleware(['web']);
 
+// Test with only essential middleware (no sessions)
+Route::post('/test-minimal', function (Request $request) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Minimal middleware test successful!',
+        'data' => $request->all()
+    ]);
+})->middleware([\App\Http\Middleware\EncryptCookies::class, \App\Http\Middleware\DisableCsrf::class]);
+
+Route::get('/test-minimal', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Minimal Middleware Test</title></head>
+    <body>
+        <h1>Minimal Middleware Test</h1>
+        <form method="POST" action="/test-minimal">
+            <input type="text" name="test_field" placeholder="Enter anything" required>
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+    </html>';
+});
+
+// Test with sessions but no CSRF
+Route::post('/test-sessions', function (Request $request) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Sessions test successful!',
+        'data' => $request->all(),
+        'session_id' => session()->getId()
+    ]);
+})->middleware([
+    \App\Http\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \App\Http\Middleware\DisableCsrf::class
+]);
+
+Route::get('/test-sessions', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Sessions Test</title></head>
+    <body>
+        <h1>Sessions Test</h1>
+        <p>Session ID: ' . session()->getId() . '</p>
+        <form method="POST" action="/test-sessions">
+            <input type="text" name="test_field" placeholder="Enter anything" required>
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+    </html>';
+});
+
+// Test registration with minimal middleware (bypassing ShareErrorsFromSession)
+Route::post('/test-register', function (Request $request) {
+    try {
+        $name = $request->input('name');
+        $email = $request->input('email');
+        $password = $request->input('password');
+
+        if (empty($name) || empty($email) || empty($password)) {
+            return response()->json(['error' => 'All fields are required.'], 400);
+        }
+
+        if (strlen($password) < 8) {
+            return response()->json(['error' => 'Password must be at least 8 characters.'], 400);
+        }
+
+        if (User::where('email', $email)->exists()) {
+            return response()->json(['error' => 'Email already exists.'], 400);
+        }
+
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($password),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Registration successful!',
+            'user_id' => $user->id
+        ]);
+    } catch (Exception $e) {
+        return response()->json(['error' => 'Registration failed: ' . $e->getMessage()], 500);
+    }
+})->middleware([
+    \App\Http\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \App\Http\Middleware\DisableCsrf::class,
+    \Illuminate\Routing\Middleware\SubstituteBindings::class
+]);
+
+Route::get('/test-register', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Test Registration</title></head>
+    <body>
+        <h1>Test Registration (Minimal Middleware)</h1>
+        <form method="POST" action="/test-register">
+            <div>
+                <label>Name:</label>
+                <input type="text" name="name" required>
+            </div>
+            <div>
+                <label>Email:</label>
+                <input type="email" name="email" required>
+            </div>
+            <div>
+                <label>Password:</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+    </body>
+    </html>';
+});
+
 // BASIC ROUTES
 Route::get('/', function () {
     return view('home');
@@ -49,7 +171,7 @@ Route::post('/test-post', function (Request $request) {
     return 'SUCCESS! No 419 error. Data: ' . json_encode($request->all());
 })->withoutMiddleware(['web']);
 
-// AUTHENTICATION ROUTES (CSRF disabled globally)
+// AUTHENTICATION ROUTES (using custom DisableCsrf middleware)
 Route::get('/register', function () {
     return view('auth.register');
 })->name('register');
