@@ -2,18 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\StockController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
 
-
+// BASIC ROUTES
 Route::get('/', function () {
     return view('home');
 });
@@ -22,67 +14,44 @@ Route::get('/about', function () {
     return view('about');
 });
 
-// SIMPLE TEST ROUTE - NO VALIDATION, NO COMPLEXITY
+// COMPLETELY RAW TEST - NO WEB MIDDLEWARE AT ALL
 Route::get('/test', function () {
-    return '<form method="POST" action="/test-post"><button type="submit">Test Submit (No CSRF)</button></form>';
-});
+    return '<html><body><h1>Raw Test (No Middleware)</h1><form method="POST" action="/test-post"><button type="submit">Test Submit (No Sessions, No CSRF)</button></form></body></html>';
+})->withoutMiddleware();
 
 Route::post('/test-post', function (Request $request) {
-    return 'SUCCESS! No 419 error. Form data: ' . json_encode($request->all());
-});
+    return 'SUCCESS! No 419 error. Data: ' . json_encode($request->all());
+})->withoutMiddleware();
 
-// Test route for 500 error
-Route::get('/test-500', function () {
-    throw new Exception('Test exception for 500 error page');
-});
-
-// STATELESS AUTHENTICATION (no sessions, using cookies)
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
-
-Route::post('/login', function (Request $request) {
-    try {
-        // SIMPLEST POSSIBLE LOGIN - NO VALIDATION
-        $email = $request->input('email');
-        $password = $request->input('password');
-
-        if (empty($email) || empty($password)) {
-            return back()->withErrors(['email' => 'Email and password required']);
-        }
-
-        $user = User::where('email', $email)->first();
-
-        if ($user && Hash::check($password, $user->password)) {
-            // Store user ID in encrypted cookie instead of session
-            $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
-            return redirect('/stocks')->cookie($cookie);
-        }
-
-        return back()->withErrors(['email' => 'Invalid credentials']);
-    } catch (Exception $e) {
-        return 'ERROR: ' . $e->getMessage();
-    }
-});
-
+// RAW REGISTRATION - BYPASS ALL MIDDLEWARE
 Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
+    return '
+    <html>
+    <head><title>Raw Register</title></head>
+    <body>
+        <h1>Raw Registration (No Sessions/CSRF)</h1>
+        <form method="POST" action="/register-raw">
+            <input type="text" name="name" placeholder="Name" required><br><br>
+            <input type="email" name="email" placeholder="Email" required><br><br>
+            <input type="password" name="password" placeholder="Password" required><br><br>
+            <button type="submit">Register</button>
+        </form>
+    </body>
+    </html>';
+})->name('register')->withoutMiddleware();
 
-Route::post('/register', function (Request $request) {
+Route::post('/register-raw', function (Request $request) {
     try {
-        // SIMPLEST POSSIBLE REGISTRATION - MINIMAL VALIDATION
         $name = $request->input('name');
         $email = $request->input('email');
         $password = $request->input('password');
 
         if (empty($name) || empty($email) || empty($password)) {
-            return back()->withErrors(['email' => 'All fields required']);
+            return 'ERROR: All fields required';
         }
 
-        // Check if user exists
         if (User::where('email', $email)->exists()) {
-            return back()->withErrors(['email' => 'Email already exists']);
+            return 'ERROR: Email already exists';
         }
 
         $user = User::create([
@@ -91,140 +60,56 @@ Route::post('/register', function (Request $request) {
             'password' => Hash::make($password),
         ]);
 
-        // Store user ID in encrypted cookie instead of session
-        $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
-        return redirect('/stocks')->with('success', 'Registration successful!')->cookie($cookie);
+        return 'SUCCESS! User created: ' . $user->name . ' (' . $user->email . ')';
     } catch (Exception $e) {
-        return 'ERROR: ' . $e->getMessage();
+        return 'EXCEPTION: ' . $e->getMessage();
     }
-});
+})->withoutMiddleware();
 
-// Custom auth middleware using cookies
-Route::middleware(['web'])->group(function () {
-    Route::post('/logout', function (Request $request) {
-        return redirect('/')->withCookie(cookie()->forget('user_id'));
-    })->name('logout');
+// RAW LOGIN - BYPASS ALL MIDDLEWARE
+Route::get('/login', function () {
+    return '
+    <html>
+    <head><title>Raw Login</title></head>
+    <body>
+        <h1>Raw Login (No Sessions/CSRF)</h1>
+        <form method="POST" action="/login-raw">
+            <input type="email" name="email" placeholder="Email" required><br><br>
+            <input type="password" name="password" placeholder="Password" required><br><br>
+            <button type="submit">Login</button>
+        </form>
+    </body>
+    </html>';
+})->name('login')->withoutMiddleware();
 
-    // Protected routes with cookie-based auth
-    Route::get('/stocks', function (Request $request) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
+Route::post('/login-raw', function (Request $request) {
+    try {
+        $email = $request->input('email');
+        $password = $request->input('password');
 
-            $stocks = $user->stocks;
-            return view('stocks.index', compact('stocks'));
-        } catch (Exception $e) {
-            return redirect('/login');
+        if (empty($email) || empty($password)) {
+            return 'ERROR: Email and password required';
         }
-    })->name('stocks.index');
 
-    Route::get('/stocks/create', function (Request $request) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
-            return view('stocks.create');
-        } catch (Exception $e) {
-            return redirect('/login');
+        $user = User::where('email', $email)->first();
+
+        if ($user && Hash::check($password, $user->password)) {
+            return 'SUCCESS! Login successful for: ' . $user->name;
         }
-    })->name('stocks.create');
 
-    Route::post('/stocks', function (Request $request) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
+        return 'ERROR: Invalid credentials';
+    } catch (Exception $e) {
+        return 'EXCEPTION: ' . $e->getMessage();
+    }
+})->withoutMiddleware();
 
-            $validated = $request->validate([
-                'symbol' => 'required|string|max:10',
-                'name' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'change' => 'required|numeric',
-                'trend' => 'required|in:up,down,neutral',
-            ]);
+// STOCKS WITH MINIMAL MIDDLEWARE
+Route::get('/stocks', function (Request $request) {
+    $stocks = \App\Models\Stock::all();
+    return 'STOCKS: ' . json_encode($stocks->toArray());
+})->withoutMiddleware();
 
-            $user->stocks()->create($validated);
-            return redirect()->route('stocks.index')->with('success', 'Stock added successfully!');
-        } catch (Exception $e) {
-            return redirect('/login');
-        }
-    })->name('stocks.store');
-
-    Route::get('/stocks/{stock}', function (Request $request, $stockId) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
-
-            $stock = $user->stocks()->findOrFail($stockId);
-            return view('stocks.show', compact('stock'));
-        } catch (Exception $e) {
-            return redirect('/login');
-        }
-    })->name('stocks.show');
-
-    Route::get('/stocks/{stock}/edit', function (Request $request, $stockId) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
-
-            $stock = $user->stocks()->findOrFail($stockId);
-            return view('stocks.edit', compact('stock'));
-        } catch (Exception $e) {
-            return redirect('/login');
-        }
-    })->name('stocks.edit');
-
-    Route::put('/stocks/{stock}', function (Request $request, $stockId) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
-
-            $stock = $user->stocks()->findOrFail($stockId);
-
-            $validated = $request->validate([
-                'symbol' => 'required|string|max:10',
-                'name' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'change' => 'required|numeric',
-                'trend' => 'required|in:up,down,neutral',
-            ]);
-
-            $stock->update($validated);
-            return redirect()->route('stocks.index')->with('success', 'Stock updated successfully!');
-        } catch (Exception $e) {
-            return redirect('/login');
-        }
-    })->name('stocks.update');
-
-    Route::delete('/stocks/{stock}', function (Request $request, $stockId) {
-        try {
-            $userId = decrypt($request->cookie('user_id'));
-            $user = User::find($userId);
-            if (!$user) {
-                return redirect('/login');
-            }
-
-            $stock = $user->stocks()->findOrFail($stockId);
-            $stock->delete();
-            return redirect()->route('stocks.index')->with('success', 'Stock deleted successfully!');
-        } catch (Exception $e) {
-            return redirect('/login');
-        }
-    })->name('stocks.destroy');
+// Test route for 500 error
+Route::get('/test-500', function () {
+    throw new Exception('Test exception for 500 error page');
 });
