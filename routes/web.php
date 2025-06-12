@@ -31,6 +31,33 @@ Route::get('/test-form', function () {
     </html>';
 })->withoutMiddleware(['web']);
 
+// COMPLETELY BYPASS WEB MIDDLEWARE GROUP
+Route::post('/test-bypass-web', function (Request $request) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Bypassed web middleware completely!',
+        'data' => $request->all()
+    ]);
+})->withoutMiddleware(['web'])->middleware([
+    \App\Http\Middleware\DisableCsrf::class
+]);
+
+Route::get('/test-bypass-web', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Bypass Web Middleware</title></head>
+    <body>
+        <h1>Bypass Web Middleware Test</h1>
+        <p>This completely bypasses the web middleware group and manually adds DisableCsrf</p>
+        <form method="POST" action="/test-bypass-web">
+            <input type="text" name="test_field" placeholder="Enter anything" required>
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+    </html>';
+})->withoutMiddleware(['web']);
+
 // ULTRA MINIMAL - Only our DisableCsrf middleware
 Route::post('/test-ultra-minimal', function (Request $request) {
     return response()->json([
