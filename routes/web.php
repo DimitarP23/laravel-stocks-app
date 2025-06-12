@@ -7,6 +7,30 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cookie;
 
+// DIAGNOSTIC TEST ROUTE - NO MIDDLEWARE AT ALL
+Route::post('/test-form', function (Request $request) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Form submitted successfully!',
+        'data' => $request->all()
+    ]);
+})->withoutMiddleware();
+
+Route::get('/test-form', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Test Form</title></head>
+    <body>
+        <h1>Test Form (No Middleware)</h1>
+        <form method="POST" action="/test-form">
+            <input type="text" name="test_field" placeholder="Enter anything" required>
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+    </html>';
+})->withoutMiddleware();
+
 // BASIC ROUTES
 Route::get('/', function () {
     return view('home');

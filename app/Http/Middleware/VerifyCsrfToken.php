@@ -12,6 +12,6 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        '*', // Disable ALL CSRF protection to eliminate 419 errors
+        // Default Laravel CSRF middleware (not used anymore)
     ];
 }
