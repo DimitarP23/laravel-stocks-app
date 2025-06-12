@@ -17,7 +17,8 @@
 
             <div class="card-body">
                 <form method="POST" action="{{ route('stocks.update', $stock) }}">
-                    <input type="hidden" name="_method" value="PUT">
+                    @csrf
+                    @method('PUT')
 
                     <div class="mb-3">
                         <label for="symbol" class="form-label">Stock Symbol</label>
