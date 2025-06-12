@@ -10,7 +10,6 @@
 
             <div class="card-body">
                 <form method="POST" action="{{ route('register') }}" autocomplete="on">
-                    @csrf
 
                     <div class="mb-3">
                         <label for="name" class="form-label">Name</label>
@@ -40,7 +39,7 @@
                         <div class="form-text">
                             Password must:
                             <ul class="mb-0">
-                                <li>Be at least 10 characters long</li>
+                                <li>Be at least 8 characters long</li>
                                 <li>Include uppercase and lowercase letters</li>
                                 <li>Include at least one number</li>
                                 <li>Include at least one symbol</li>
