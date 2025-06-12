@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 
 
 Route::get('/', function () {
@@ -26,27 +27,32 @@ Route::get('/test-500', function () {
     throw new Exception('Test exception for 500 error page');
 });
 
-// CUSTOM AUTHENTICATION ROUTES (bypassing Laravel Auth)
+// STATELESS AUTHENTICATION (no sessions, using cookies)
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
 Route::post('/login', function (Request $request) {
-    $credentials = $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
+    try {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
-    $user = User::where('email', $credentials['email'])->first();
+        $user = User::where('email', $credentials['email'])->first();
 
-    if ($user && Hash::check($credentials['password'], $user->password)) {
-        Auth::login($user, $request->filled('remember'));
-        return redirect()->intended('/stocks');
+        if ($user && Hash::check($credentials['password'], $user->password)) {
+            // Store user ID in encrypted cookie instead of session
+            $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
+            return redirect('/stocks')->cookie($cookie);
+        }
+
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ])->onlyInput('email');
+    } catch (Exception $e) {
+        return back()->withErrors(['email' => 'Login failed. Please try again.']);
     }
-
-    return back()->withErrors([
-        'email' => 'The provided credentials do not match our records.',
-    ])->onlyInput('email');
 });
 
 Route::get('/register', function () {
@@ -54,36 +60,153 @@ Route::get('/register', function () {
 })->name('register');
 
 Route::post('/register', function (Request $request) {
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:users',
-        'password' => 'required|string|min:10|confirmed',
-    ]);
+    try {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:10|confirmed',
+        ]);
 
-    $user = User::create([
-        'name' => $validated['name'],
-        'email' => $validated['email'],
-        'password' => Hash::make($validated['password']),
-    ]);
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
 
-    Auth::login($user);
-
-    return redirect('/stocks')->with('success', 'Registration successful!');
+        // Store user ID in encrypted cookie instead of session
+        $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
+        return redirect('/stocks')->with('success', 'Registration successful!')->cookie($cookie);
+    } catch (Exception $e) {
+        return back()->withErrors(['email' => 'Registration failed. Please try again.']);
+    }
 });
 
-// Protected routes
-Route::middleware(['web', 'auth'])->group(function () {
+// Custom auth middleware using cookies
+Route::middleware(['web'])->group(function () {
     Route::post('/logout', function (Request $request) {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect('/');
+        return redirect('/')->withCookie(cookie()->forget('user_id'));
     })->name('logout');
 
-    // Protected routes here
-    Route::get('/contact', [ContactController::class, 'show']);
-    Route::post('/contact', [ContactController::class, 'submit']);
+    // Protected routes with cookie-based auth
+    Route::get('/stocks', function (Request $request) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
 
-    // Stocks routes - full CRUD
-    Route::resource('stocks', StockController::class);
+            $stocks = $user->stocks;
+            return view('stocks.index', compact('stocks'));
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.index');
+
+    Route::get('/stocks/create', function (Request $request) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+            return view('stocks.create');
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.create');
+
+    Route::post('/stocks', function (Request $request) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+
+            $validated = $request->validate([
+                'symbol' => 'required|string|max:10',
+                'name' => 'required|string|max:255',
+                'price' => 'required|numeric|min:0',
+                'change' => 'required|numeric',
+                'trend' => 'required|in:up,down,neutral',
+            ]);
+
+            $user->stocks()->create($validated);
+            return redirect()->route('stocks.index')->with('success', 'Stock added successfully!');
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.store');
+
+    Route::get('/stocks/{stock}', function (Request $request, $stockId) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+
+            $stock = $user->stocks()->findOrFail($stockId);
+            return view('stocks.show', compact('stock'));
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.show');
+
+    Route::get('/stocks/{stock}/edit', function (Request $request, $stockId) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+
+            $stock = $user->stocks()->findOrFail($stockId);
+            return view('stocks.edit', compact('stock'));
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.edit');
+
+    Route::put('/stocks/{stock}', function (Request $request, $stockId) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+
+            $stock = $user->stocks()->findOrFail($stockId);
+
+            $validated = $request->validate([
+                'symbol' => 'required|string|max:10',
+                'name' => 'required|string|max:255',
+                'price' => 'required|numeric|min:0',
+                'change' => 'required|numeric',
+                'trend' => 'required|in:up,down,neutral',
+            ]);
+
+            $stock->update($validated);
+            return redirect()->route('stocks.index')->with('success', 'Stock updated successfully!');
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.update');
+
+    Route::delete('/stocks/{stock}', function (Request $request, $stockId) {
+        try {
+            $userId = decrypt($request->cookie('user_id'));
+            $user = User::find($userId);
+            if (!$user) {
+                return redirect('/login');
+            }
+
+            $stock = $user->stocks()->findOrFail($stockId);
+            $stock->delete();
+            return redirect()->route('stocks.index')->with('success', 'Stock deleted successfully!');
+        } catch (Exception $e) {
+            return redirect('/login');
+        }
+    })->name('stocks.destroy');
 });
