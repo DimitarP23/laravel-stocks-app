@@ -17,11 +17,11 @@ Route::get('/about', function () {
 // COMPLETELY RAW TEST - NO WEB MIDDLEWARE AT ALL
 Route::get('/test', function () {
     return '<html><body><h1>Raw Test (No Middleware)</h1><form method="POST" action="/test-post"><button type="submit">Test Submit (No Sessions, No CSRF)</button></form></body></html>';
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 Route::post('/test-post', function (Request $request) {
     return 'SUCCESS! No 419 error. Data: ' . json_encode($request->all());
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 // RAW REGISTRATION - BYPASS ALL MIDDLEWARE
 Route::get('/register', function () {
@@ -38,7 +38,7 @@ Route::get('/register', function () {
         </form>
     </body>
     </html>';
-})->name('register')->withoutMiddleware();
+})->name('register')->withoutMiddleware(['web']);
 
 Route::post('/register-raw', function (Request $request) {
     try {
@@ -64,7 +64,7 @@ Route::post('/register-raw', function (Request $request) {
     } catch (Exception $e) {
         return 'EXCEPTION: ' . $e->getMessage();
     }
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 // RAW LOGIN - BYPASS ALL MIDDLEWARE
 Route::get('/login', function () {
@@ -80,7 +80,7 @@ Route::get('/login', function () {
         </form>
     </body>
     </html>';
-})->name('login')->withoutMiddleware();
+})->name('login')->withoutMiddleware(['web']);
 
 Route::post('/login-raw', function (Request $request) {
     try {
@@ -101,13 +101,13 @@ Route::post('/login-raw', function (Request $request) {
     } catch (Exception $e) {
         return 'EXCEPTION: ' . $e->getMessage();
     }
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 // STOCKS WITH MINIMAL MIDDLEWARE
 Route::get('/stocks', function (Request $request) {
     $stocks = \App\Models\Stock::all();
     return 'STOCKS: ' . json_encode($stocks->toArray());
-})->withoutMiddleware();
+})->withoutMiddleware(['web']);
 
 // Test route for 500 error
 Route::get('/test-500', function () {
