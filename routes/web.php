@@ -8,6 +8,9 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 
 Route::get('/', function () {
@@ -23,26 +26,59 @@ Route::get('/test-500', function () {
     throw new Exception('Test exception for 500 error page');
 });
 
-// Authentication routes WITHOUT CSRF (temporary fix)
-Route::get('/login', [LoginController::class, 'create'])
-    ->middleware('throttle:7,1')
-    ->name('login');
-Route::post('/login', [LoginController::class, 'store'])
-    ->middleware('throttle:7,1');
-Route::get('/register', [RegisterController::class, 'create'])->name('register');
-Route::post('/register', [RegisterController::class, 'store']);
-Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])
-    ->name('password.request');
-Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])
-    ->name('password.email');
-Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])
-    ->name('password.reset');
-Route::post('/reset-password', [ResetPasswordController::class, 'store'])
-    ->name('password.update');
+// CUSTOM AUTHENTICATION ROUTES (bypassing Laravel Auth)
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');
 
-// Protected routes with CSRF
+Route::post('/login', function (Request $request) {
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $user = User::where('email', $credentials['email'])->first();
+
+    if ($user && Hash::check($credentials['password'], $user->password)) {
+        Auth::login($user, $request->filled('remember'));
+        return redirect()->intended('/stocks');
+    }
+
+    return back()->withErrors([
+        'email' => 'The provided credentials do not match our records.',
+    ])->onlyInput('email');
+});
+
+Route::get('/register', function () {
+    return view('auth.register');
+})->name('register');
+
+Route::post('/register', function (Request $request) {
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:10|confirmed',
+    ]);
+
+    $user = User::create([
+        'name' => $validated['name'],
+        'email' => $validated['email'],
+        'password' => Hash::make($validated['password']),
+    ]);
+
+    Auth::login($user);
+
+    return redirect('/stocks')->with('success', 'Registration successful!');
+});
+
+// Protected routes
 Route::middleware(['web', 'auth'])->group(function () {
-    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::post('/logout', function (Request $request) {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/');
+    })->name('logout');
 
     // Protected routes here
     Route::get('/contact', [ContactController::class, 'show']);

@@ -12,6 +12,9 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        '*', // Temporarily disable ALL CSRF protection to fix 419 error
+        // Only exclude auth routes from CSRF protection
+        'login',
+        'register',
+        'logout',
     ];
 }
