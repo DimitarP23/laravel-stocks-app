@@ -17,7 +17,6 @@
 
             <div class="card-body">
                 <form method="POST" action="{{ route('stocks.update', $stock) }}">
-                    @csrf
                     @method('PUT')
 
                     <div class="mb-3">
