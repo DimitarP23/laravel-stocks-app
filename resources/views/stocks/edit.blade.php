@@ -3,75 +3,83 @@
 @section('title', 'Edit Stock')
 
 @section('content')
-<div class="row">
-    <div class="col-md-8 mx-auto">
+<div class="row justify-content-center">
+    <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h3>✏️ Edit Stock: {{ $stock->symbol }}</h3>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Edit Stock: {{ $stock->symbol }}</h5>
+                    <a href="{{ route('stocks.index') }}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Stocks
+                    </a>
+                </div>
             </div>
+
             <div class="card-body">
-                <form action="{{ route('stocks.update', $stock) }}" method="POST">
-                    @csrf
-                    @method('PUT')
+                <form method="POST" action="{{ route('stocks.update', $stock) }}">
+                    <input type="hidden" name="_method" value="PUT">
 
                     <div class="mb-3">
-                        <label for="symbol" class="form-label">Stock Symbol *</label>
-                        <input type="text" class="form-control @error('symbol') is-invalid @enderror"
-                               id="symbol" name="symbol" value="{{ old('symbol', $stock->symbol) }}"
-                               placeholder="e.g., AAPL, MSFT, GOOGL" maxlength="10" required>
+                        <label for="symbol" class="form-label">Stock Symbol</label>
+                        <input id="symbol" type="text" class="form-control @error('symbol') is-invalid @enderror"
+                               name="symbol" value="{{ old('symbol', $stock->symbol) }}" required maxlength="10"
+                               placeholder="e.g., AAPL, GOOGL" style="text-transform: uppercase;">
                         @error('symbol')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                        <div class="form-text">Enter the stock ticker symbol (max 10 characters)</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="name" class="form-label">Company Name *</label>
-                        <input type="text" class="form-control @error('name') is-invalid @enderror"
-                               id="name" name="name" value="{{ old('name', $stock->name) }}"
-                               placeholder="e.g., Apple Inc., Microsoft Corporation" required>
+                        <label for="name" class="form-label">Company Name</label>
+                        <input id="name" type="text" class="form-control @error('name') is-invalid @enderror"
+                               name="name" value="{{ old('name', $stock->name) }}" required maxlength="255"
+                               placeholder="e.g., Apple Inc., Google LLC">
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="mb-3">
-                        <label for="price" class="form-label">Current Price ($) *</label>
-                        <input type="number" step="0.01" min="0" class="form-control @error('price') is-invalid @enderror"
-                               id="price" name="price" value="{{ old('price', $stock->price) }}"
-                               placeholder="e.g., 173.50" required>
+                        <label for="price" class="form-label">Current Price ($)</label>
+                        <input id="price" type="number" step="0.01" min="0"
+                               class="form-control @error('price') is-invalid @enderror"
+                               name="price" value="{{ old('price', $stock->price) }}" required
+                               placeholder="e.g., 150.25">
                         @error('price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="mb-3">
-                        <label for="change" class="form-label">Price Change</label>
-                        <input type="text" class="form-control @error('change') is-invalid @enderror"
-                               id="change" name="change" value="{{ old('change', $stock->change) }}"
-                               placeholder="e.g., +2.5%, -1.2%">
+                        <label for="change" class="form-label">Price Change ($)</label>
+                        <input id="change" type="number" step="0.01"
+                               class="form-control @error('change') is-invalid @enderror"
+                               name="change" value="{{ old('change', $stock->change) }}" required
+                               placeholder="e.g., +2.50 or -1.25">
                         @error('change')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                        <div class="form-text">Enter positive values for gains, negative for losses</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="trend" class="form-label">Trend *</label>
-                        <select class="form-select @error('trend') is-invalid @enderror" id="trend" name="trend" required>
+                        <label for="trend" class="form-label">Trend</label>
+                        <select id="trend" class="form-select @error('trend') is-invalid @enderror" name="trend" required>
                             <option value="">Select trend...</option>
                             <option value="up" {{ old('trend', $stock->trend) == 'up' ? 'selected' : '' }}>📈 Up</option>
                             <option value="down" {{ old('trend', $stock->trend) == 'down' ? 'selected' : '' }}>📉 Down</option>
+                            <option value="neutral" {{ old('trend', $stock->trend) == 'neutral' ? 'selected' : '' }}>➡️ Neutral</option>
                         </select>
                         @error('trend')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ route('stocks.index') }}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to Stocks
-                        </a>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ route('stocks.index') }}" class="btn btn-secondary me-md-2">Cancel</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Update Stock
+                            <i class="bi bi-pencil"></i> Update Stock
                         </button>
                     </div>
                 </form>
