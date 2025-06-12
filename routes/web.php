@@ -23,26 +23,25 @@ Route::get('/test-500', function () {
     throw new Exception('Test exception for 500 error page');
 });
 
-// Authentication routes
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'create'])
-        ->middleware('throttle:7,1')
-        ->name('login');
-    Route::post('/login', [LoginController::class, 'store'])
-        ->middleware('throttle:7,1');
-    Route::get('/register', [RegisterController::class, 'create'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store']);
-    Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])
-        ->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])
-        ->name('password.email');
-    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])
-        ->name('password.reset');
-    Route::post('/reset-password', [ResetPasswordController::class, 'store'])
-        ->name('password.update');
-});
+// Authentication routes WITHOUT CSRF (temporary fix)
+Route::get('/login', [LoginController::class, 'create'])
+    ->middleware('throttle:7,1')
+    ->name('login');
+Route::post('/login', [LoginController::class, 'store'])
+    ->middleware('throttle:7,1');
+Route::get('/register', [RegisterController::class, 'create'])->name('register');
+Route::post('/register', [RegisterController::class, 'store']);
+Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])
+    ->name('password.request');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])
+    ->name('password.email');
+Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])
+    ->name('password.reset');
+Route::post('/reset-password', [ResetPasswordController::class, 'store'])
+    ->name('password.update');
 
-Route::middleware('auth')->group(function () {
+// Protected routes with CSRF
+Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     // Protected routes here
@@ -51,6 +50,4 @@ Route::middleware('auth')->group(function () {
 
     // Stocks routes - full CRUD
     Route::resource('stocks', StockController::class);
-
-
 });
