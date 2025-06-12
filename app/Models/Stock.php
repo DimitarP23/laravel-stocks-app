@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Stock extends Model
 {
@@ -14,6 +15,15 @@ class Stock extends Model
         'name',
         'price',
         'change',
-        'trend'
+        'trend',
+        'user_id'
     ];
+
+    /**
+     * Get the user that owns the stock.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }
