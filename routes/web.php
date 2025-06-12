@@ -22,6 +22,15 @@ Route::get('/about', function () {
     return view('about');
 });
 
+// SIMPLE TEST ROUTE - NO VALIDATION, NO COMPLEXITY
+Route::get('/test', function () {
+    return '<form method="POST" action="/test-post"><button type="submit">Test Submit (No CSRF)</button></form>';
+});
+
+Route::post('/test-post', function (Request $request) {
+    return 'SUCCESS! No 419 error. Form data: ' . json_encode($request->all());
+});
+
 // Test route for 500 error
 Route::get('/test-500', function () {
     throw new Exception('Test exception for 500 error page');
@@ -34,24 +43,25 @@ Route::get('/login', function () {
 
 Route::post('/login', function (Request $request) {
     try {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        // SIMPLEST POSSIBLE LOGIN - NO VALIDATION
+        $email = $request->input('email');
+        $password = $request->input('password');
 
-        $user = User::where('email', $credentials['email'])->first();
+        if (empty($email) || empty($password)) {
+            return back()->withErrors(['email' => 'Email and password required']);
+        }
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
+        $user = User::where('email', $email)->first();
+
+        if ($user && Hash::check($password, $user->password)) {
             // Store user ID in encrypted cookie instead of session
             $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
             return redirect('/stocks')->cookie($cookie);
         }
 
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+        return back()->withErrors(['email' => 'Invalid credentials']);
     } catch (Exception $e) {
-        return back()->withErrors(['email' => 'Login failed. Please try again.']);
+        return 'ERROR: ' . $e->getMessage();
     }
 });
 
@@ -61,23 +71,31 @@ Route::get('/register', function () {
 
 Route::post('/register', function (Request $request) {
     try {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:10|confirmed',
-        ]);
+        // SIMPLEST POSSIBLE REGISTRATION - MINIMAL VALIDATION
+        $name = $request->input('name');
+        $email = $request->input('email');
+        $password = $request->input('password');
+
+        if (empty($name) || empty($email) || empty($password)) {
+            return back()->withErrors(['email' => 'All fields required']);
+        }
+
+        // Check if user exists
+        if (User::where('email', $email)->exists()) {
+            return back()->withErrors(['email' => 'Email already exists']);
+        }
 
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($password),
         ]);
 
         // Store user ID in encrypted cookie instead of session
         $cookie = cookie('user_id', encrypt($user->id), 60 * 24 * 7); // 7 days
         return redirect('/stocks')->with('success', 'Registration successful!')->cookie($cookie);
     } catch (Exception $e) {
-        return back()->withErrors(['email' => 'Registration failed. Please try again.']);
+        return 'ERROR: ' . $e->getMessage();
     }
 });
 
