@@ -1,3 +1,110 @@
+# Laravel Stocks Management Application
+
+A secure Laravel application with user authentication and stock management featuring advanced security measures including IDOR protection and access control.
+
+## 🔗 **Live Application**
+**URL:** https://dimitar-stocks-app-686b8bb03a0e.herokuapp.com/
+
+## 🔒 **Security Features**
+
+### **1. IDOR (Insecure Direct Object Reference) Protection**
+- **Location:** Stock management module (`/stocks`)
+- **Implementation:** Users can only access, view, edit, and delete their own stocks
+- **Testing:** Try accessing `/stocks/{id}` with different IDs - you'll get 403 Forbidden for stocks not owned by you
+
+### **2. Access Control & Principle of Least Privilege**
+- **Authentication Required:** All stock operations require login
+- **User Isolation:** Each user can only see and manage their own stocks
+- **Route Protection:** Middleware ensures only authenticated users access protected routes
+
+### **3. Session Security & Attack Prevention**
+- **HTTPS Encryption:** All traffic encrypted (prevents session hijacking)
+- **CSRF Protection:** All forms include CSRF tokens
+- **Secure Sessions:** Laravel's secure session handling
+- **Password Security:** Bcrypt hashing with salt
+
+## 🧪 **Testing Security Features**
+
+### **Test IDOR Protection:**
+1. **Register two different accounts:**
+   - Account 1: `user1@test.com` / `TestPass123!`
+   - Account 2: `user2@test.com` / `TestPass123!`
+
+2. **Create stocks with each account:**
+   - Login as user1, create a stock, note the URL (e.g., `/stocks/1`)
+   - Login as user2, create a stock, note the URL (e.g., `/stocks/2`)
+
+3. **Test IDOR protection:**
+   - While logged in as user1, try to access `/stocks/2` (user2's stock)
+   - You should get a **403 Forbidden** error
+   - Try editing: `/stocks/2/edit` - should also be blocked
+
+### **Test Access Control:**
+1. **Logout and try accessing:** `/stocks` - should redirect to login
+2. **Try direct URLs:** `/stocks/create` without login - should be blocked
+
+## 🛡️ **Security Implementation Details**
+
+### **Controller-Level Protection:**
+```php
+// Example from StockController.php
+public function show(Stock $stock)
+{
+    // IDOR Protection: Ensure user can only view their own stocks
+    if ($stock->user_id !== Auth::id()) {
+        abort(403, 'Unauthorized access to this stock.');
+    }
+    return view('stocks.show', compact('stock'));
+}
+```
+
+### **Database-Level Security:**
+- Foreign key constraints ensure data integrity
+- User-stock relationships prevent cross-user access
+- Cascade deletes maintain referential integrity
+
+## 📋 **Quick Testing Guide for Teachers**
+
+### **1. Basic Functionality:**
+- Register: https://dimitar-stocks-app-686b8bb03a0e.herokuapp.com/register
+- Login: https://dimitar-stocks-app-686b8bb03a0e.herokuapp.com/login
+- Stocks: https://dimitar-stocks-app-686b8bb03a0e.herokuapp.com/stocks
+
+### **2. IDOR Testing:**
+- Create account, add stock, note stock ID in URL
+- Create second account, try accessing first account's stock ID
+- Should receive 403 Forbidden error
+
+### **3. Access Control Testing:**
+- Logout and try accessing `/stocks` directly
+- Should redirect to login page
+
+## 🚀 **Technical Stack**
+- **Framework:** Laravel 11
+- **Database:** PostgreSQL (Heroku)
+- **Authentication:** Laravel Breeze
+- **Deployment:** Heroku with HTTPS
+- **Security:** CSRF, HTTPS, IDOR protection, Access Control
+
+## 🔧 **Local Development**
+```bash
+git clone https://github.com/DimitarP23/laravel-stocks-app.git
+cd laravel-stocks-app
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+## 📊 **Security Compliance**
+✅ **HTTPS Configuration** - Prevents snooping and session hijacking  
+✅ **IDOR Protection** - Users cannot access other users' data  
+✅ **Access Control** - Authentication required for sensitive operations  
+✅ **Principle of Least Privilege** - Users only access their own resources  
+✅ **CSRF Protection** - All forms protected against cross-site request forgery  
+✅ **Secure Sessions** - Laravel's built-in session security
+
                 Test Plan 
 
 1. ---------->Login System<----------
