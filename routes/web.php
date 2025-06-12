@@ -25,10 +25,10 @@ Route::post('/test-post', function (Request $request) {
     return 'SUCCESS! No 419 error. Data: ' . json_encode($request->all());
 })->withoutMiddleware(['web']);
 
-// AUTHENTICATION ROUTES (bypassing web middleware to avoid 419 errors)
+// AUTHENTICATION ROUTES (only bypassing CSRF to avoid 419 errors)
 Route::get('/register', function () {
     return view('auth.register');
-})->name('register')->withoutMiddleware(['web']);
+})->name('register');
 
 Route::post('/register', function (Request $request) {
     try {
@@ -66,11 +66,11 @@ Route::post('/register', function (Request $request) {
     } catch (Exception $e) {
         return back()->withErrors(['email' => 'Registration failed. Please try again.']);
     }
-})->withoutMiddleware(['web']);
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/login', function () {
     return view('auth.login');
-})->name('login')->withoutMiddleware(['web']);
+})->name('login');
 
 Route::post('/login', function (Request $request) {
     try {
@@ -93,11 +93,11 @@ Route::post('/login', function (Request $request) {
     } catch (Exception $e) {
         return back()->withErrors(['email' => 'Login failed. Please try again.']);
     }
-})->withoutMiddleware(['web']);
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::post('/logout', function (Request $request) {
     return redirect('/')->withCookie(cookie()->forget('user_id'));
-})->name('logout')->withoutMiddleware(['web']);
+})->name('logout')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 // PROTECTED ROUTES (with cookie-based authentication)
 Route::get('/stocks', function (Request $request) {
@@ -113,7 +113,7 @@ Route::get('/stocks', function (Request $request) {
     } catch (Exception $e) {
         return redirect('/login')->withErrors(['email' => 'Please log in to continue.']);
     }
-})->name('stocks.index')->withoutMiddleware(['web']);
+})->name('stocks.index');
 
 Route::get('/stocks/create', function (Request $request) {
     try {
@@ -126,7 +126,7 @@ Route::get('/stocks/create', function (Request $request) {
     } catch (Exception $e) {
         return redirect('/login');
     }
-})->name('stocks.create')->withoutMiddleware(['web']);
+})->name('stocks.create');
 
 Route::post('/stocks', function (Request $request) {
     try {
@@ -171,7 +171,7 @@ Route::post('/stocks', function (Request $request) {
     } catch (Exception $e) {
         return back()->withErrors(['symbol' => 'Failed to add stock. Please try again.']);
     }
-})->name('stocks.store')->withoutMiddleware(['web']);
+})->name('stocks.store')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/stocks/{stock}', function (Request $request, $stockId) {
     try {
@@ -186,7 +186,7 @@ Route::get('/stocks/{stock}', function (Request $request, $stockId) {
     } catch (Exception $e) {
         return redirect('/login');
     }
-})->name('stocks.show')->withoutMiddleware(['web']);
+})->name('stocks.show');
 
 Route::get('/stocks/{stock}/edit', function (Request $request, $stockId) {
     try {
@@ -201,7 +201,7 @@ Route::get('/stocks/{stock}/edit', function (Request $request, $stockId) {
     } catch (Exception $e) {
         return redirect('/login');
     }
-})->name('stocks.edit')->withoutMiddleware(['web']);
+})->name('stocks.edit');
 
 Route::put('/stocks/{stock}', function (Request $request, $stockId) {
     try {
@@ -236,7 +236,7 @@ Route::put('/stocks/{stock}', function (Request $request, $stockId) {
     } catch (Exception $e) {
         return back()->withErrors(['symbol' => 'Failed to update stock. Please try again.']);
     }
-})->name('stocks.update')->withoutMiddleware(['web']);
+})->name('stocks.update')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::delete('/stocks/{stock}', function (Request $request, $stockId) {
     try {
@@ -253,7 +253,7 @@ Route::delete('/stocks/{stock}', function (Request $request, $stockId) {
     } catch (Exception $e) {
         return redirect()->route('stocks.index')->withErrors(['error' => 'Failed to delete stock.']);
     }
-})->name('stocks.destroy')->withoutMiddleware(['web']);
+})->name('stocks.destroy')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 // Test route for 500 error
 Route::get('/test-500', function () {
