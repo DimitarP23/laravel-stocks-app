@@ -17,6 +17,7 @@
 
             <div class="card-body">
                 <form method="POST" action="{{ route('stocks.store') }}">
+                    @csrf
 
                     <div class="mb-3">
                         <label for="symbol" class="form-label">Stock Symbol</label>
