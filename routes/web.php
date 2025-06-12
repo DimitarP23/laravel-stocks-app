@@ -31,6 +31,30 @@ Route::get('/test-form', function () {
     </html>';
 })->withoutMiddleware(['web']);
 
+// ULTRA MINIMAL - Only our DisableCsrf middleware
+Route::post('/test-ultra-minimal', function (Request $request) {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Ultra minimal test successful!',
+        'data' => $request->all()
+    ]);
+})->middleware([\App\Http\Middleware\DisableCsrf::class]);
+
+Route::get('/test-ultra-minimal', function () {
+    return '
+    <!DOCTYPE html>
+    <html>
+    <head><title>Ultra Minimal Test</title></head>
+    <body>
+        <h1>Ultra Minimal Test (Only DisableCsrf)</h1>
+        <form method="POST" action="/test-ultra-minimal">
+            <input type="text" name="test_field" placeholder="Enter anything" required>
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+    </html>';
+});
+
 // Test with only essential middleware (no sessions)
 Route::post('/test-minimal', function (Request $request) {
     return response()->json([
